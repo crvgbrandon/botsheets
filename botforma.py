@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, CallbackContext, CommandHandler
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
+from google.auth.transport.requests import Request
 
 # Caminho do arquivo que armazenará os links das planilhas
 USER_SHEETS_FILE = "user_sheets.json"
@@ -53,11 +54,16 @@ def get_google_sheet(user_id):
     # Extrair o ID da planilha a partir do link
     spreadsheet_id = sheet_link.split("/d/")[1].split("/")[0]
 
-    credenciais_path = r'C:\Users\brand\botformatador\credenciais.json'
+    credenciais_path = r'C:\Users\brand\botformatador\credenciais.json'  # Atualize para o caminho correto
 
     # Credenciais para acessar a Google Sheets API
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(credenciais_path, scope)
+    creds = Credentials.from_service_account_file(credenciais_path, scopes=["https://www.googleapis.com/auth/spreadsheets"])
+
+    # Verifica se as credenciais estão válidas, caso contrário, tenta atualizar
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+
+    # Autoriza o cliente gspread com as credenciais
     client = gspread.authorize(creds)
 
     # Abrir a planilha pelo ID e selecionar a aba "APOSTAS"
@@ -65,6 +71,7 @@ def get_google_sheet(user_id):
     sheet = client.open_by_key(spreadsheet_id).worksheet(sheet_name)
 
     return sheet
+
 
 
 # Função para inserir dados na planilha
